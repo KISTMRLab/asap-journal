@@ -1,0 +1,17 @@
+title: "ASAP journal"
+description: "A screenplay becomes storyboards, animated previsualization, and immersive scenes."
+markdown: kramdown
+kramdown:
+  input: GFM
+exclude:
+  - src
+  - tests
+  - .venv
+  - data
+  - runs
+  - outputs
+  - checkpoints
+  - pyproject.toml
+  - requirements.txt
+  - package.json
+  - package-lock.json

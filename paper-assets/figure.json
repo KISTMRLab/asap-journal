@@ -1,0 +1,9 @@
+{
+  "file": "method.png",
+  "kind": "original-paper-figure",
+  "source_pdf": "asap-journal.pdf",
+  "page": 8,
+  "figure": 3,
+  "alt": "Original ASAP preparation and runtime architecture, Figure 3",
+  "caption": "Original method figure from the ASAP journal paper: Figure 3, PDF page 8. Preparation and runtime phases of screenplay-driven previsualization; not a rendering result from this independent implementation."
+}
