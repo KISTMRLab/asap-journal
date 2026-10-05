@@ -40,7 +40,7 @@ Reported top-1 action accuracy: 93% on simple sentences and 87% on complex sente
 
 ## Explore the implementation
 
-FDX/structured-script parsing, action and motion resolution, behavior timelines, SVG storyboards and schematic portable previews. Original Unity rendering, assets and benchmark results are not reproduced.
+FDX/structured-script parsing, actor and action resolution with rejection, Sentence-BERT emotion with manual override, gaze events, and a browser previsualization with A* walking, two-bone IK, prop effects, camera presets, WebM recording, a WebXR view and editable storyboards. Original Unity rendering, assets and benchmark results are not reproduced; 360-degree video, casting and environments are not reproduced in the web demo.
 
 This repository contains independently written research code. The institute's original source, datasets and trained models are not distributed. Public-data preparation, commands, assumptions and checks are documented below and in [REQUIREMENTS.md](REQUIREMENTS.md).
 
@@ -65,7 +65,7 @@ python -m pip install -r scripts/requirements-demo.txt
 python scripts/start_demo.py
 ```
 
-Open **http://127.0.0.1:8080/**. Click **Play** to run the preloaded screenplay, then **Capture frame** for the storyboard. The launcher prepares pinned Three.js modules and downloads one small official BEAT BVH/TextGrid sample on first run. It builds a nine-clip local bank and fits the Wild Pose Matching / GestureCLR-style adapter under ignored `outputs/beat-library/`; later runs reuse the cache. The first run needs internet access. Original recordings, large datasets, institute assets, and pretrained gesture weights are not distributed.
+Open **http://127.0.0.1:8080/**. Click **Play** to run the preloaded screenplay: actors walk around obstacles to the nearest matching prop, reach it with two-bone IK, switch its state, and show the analysed seven-emotion faces, which you can override per paragraph. Pick a **Camera** preset or the auto-cut camera track, **Record video** to save a WebM of the stage, and **Capture frame** to build the storyboard, which exports as HTML or JSON. The VR button offers an immersive view when the browser supports WebXR (not tested on headset hardware). The launcher prepares pinned Three.js modules and downloads one small official BEAT BVH/TextGrid sample on first run. It builds a nine-clip local bank and fits the Wild Pose Matching (GestureCLR) adapter under ignored `outputs/beat-library/`; later runs reuse the cache. The first run needs internet access. Original recordings, large datasets, institute assets, and pretrained gesture weights are not distributed.
 
 The 3D presentation uses shared Three.js avatar components and bundled fictional CC0 characters. The paper-specific algorithms and data adapters live in this repository.
 
@@ -77,7 +77,7 @@ The application uses `wild` retrieval for recorded co-speech motion: the journal
 
 <!-- implementation-guide -->
 
-This repository turns a Final Draft `.fdx` file or a small structured screenplay into an auditable behavior timeline and three portable outputs: an SVG storyboard, an interactive schematic previz, and an immersive inspection page. It implements the paper's paragraph routing, dialogue/gaze/gesture, parenthetical emotion, and prop-oriented action sequence with offline lexical matching or local Sentence-BERT models.
+This repository turns a Final Draft `.fdx` file or a small structured screenplay into an auditable behavior timeline and three portable outputs: an SVG storyboard, an interactive schematic previz, and an immersive inspection page. The browser demo below renders the same timeline in 3D with camera presets, WebM recording, a WebXR view, A* walking, two-bone IK and prop effects. It implements the paper's paragraph routing, dialogue/gaze/gesture, parenthetical emotion, and prop-oriented action sequence with offline lexical matching or local Sentence-BERT models.
 
 **Citation.** Hanseob Kim, Ghazanfar Ali, Bin Han, Hwang Youn Kim, Jieun Kim, Hyemin Shin, Gerard Jounghyun Kim, and Jae-In Hwang. “ASAP for Multi-Outputs: Auto-generating Storyboard And Pre-visualization with Virtual Actors based on Screenplay.” *Multimedia Tools and Applications* (2025). [https://doi.org/10.1007/s11042-024-19904-3](https://doi.org/10.1007/s11042-024-19904-3). Status: published.
 
