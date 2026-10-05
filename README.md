@@ -77,7 +77,7 @@ The application uses `wild` retrieval for recorded co-speech motion: the journal
 
 <!-- implementation-guide -->
 
-This repository turns a Final Draft `.fdx` file or a small structured screenplay into an auditable behavior timeline and three portable outputs: an SVG storyboard, an interactive schematic previz, and an immersive inspection page. It implements the paper's paragraph routing, dialogue/gaze/gesture, parenthetical emotion, and prop-oriented action sequence with a transparent offline resolver.
+This repository turns a Final Draft `.fdx` file or a small structured screenplay into an auditable behavior timeline and three portable outputs: an SVG storyboard, an interactive schematic previz, and an immersive inspection page. It implements the paper's paragraph routing, dialogue/gaze/gesture, parenthetical emotion, and prop-oriented action sequence with offline lexical matching or local Sentence-BERT models.
 
 **Citation.** Hanseob Kim, Ghazanfar Ali, Bin Han, Hwang Youn Kim, Jieun Kim, Hyemin Shin, Gerard Jounghyun Kim, and Jae-In Hwang. “ASAP for Multi-Outputs: Auto-generating Storyboard And Pre-visualization with Virtual Actors based on Screenplay.” *Multimedia Tools and Applications* (2025). [https://doi.org/10.1007/s11042-024-19904-3](https://doi.org/10.1007/s11042-024-19904-3). Status: published.
 
@@ -106,11 +106,36 @@ start outputs/verify/storyboard.html
 start outputs/verify/previz.html
 ```
 
-The default backend is a deterministic TF-IDF cosine baseline. For a cache-only sentence-transformer, install `python -m pip install -e ".[semantic]"` and add `"resolver": {"backend": "sentence-transformer", "model": "path-or-cached-model-name"}` to the library JSON. Loading uses `local_files_only=True`, so a missing model fails instead of downloading weights.
+The default backend is offline and deterministic: stemmed TF-IDF cosine for action combinations and stemmed keyword matching for emotions. For the paper's Sentence-BERT matching, see [Local Sentence-BERT models](#local-sentence-bert-models).
 
 ### Input schemas
 
-Structured text uses one `LABEL: text` record per line. Supported labels are `SCENE`, `ACTION`, `CHARACTER`, `DIALOGUE`, and `PARENTHETICAL`. FDX input reads `Paragraph Type` plus nested `Text` elements. The library JSON contains `stage`, keyed `characters`, keyed `props` with interaction anchors, and `motions` whose entries include `id`, `kind`, and example `phrases`.
+Structured text uses one `LABEL: text` record per line. Supported labels are `SCENE`, `ACTION`, `CHARACTER`, `DIALOGUE`, and `PARENTHETICAL`. FDX input reads `Paragraph Type` plus nested `Text` elements. An optional `LANGUAGE: ko` line sets the language of the dialogue that follows. The library JSON contains `stage`, keyed `characters` (optional `aliases` and `language`), keyed `props` (instances with stand points, interaction points and sizes), and `actions`, the plausible combination dictionary described below. Older catalogs that list combinations under `motions` with `"kind": "action"` still load.
+
+### Screenplay modules
+
+- **Actions.** The library's `actions` list is the plausible action–object–position dictionary. Each entry has `id`, `verb`, `object`, `position` and `phrases`, plus optional `synonyms`, `effect` and `duration`. The subject is the character name nearest the start of the sentence, before the verb. Names match case-sensitively as whole words, so "The red lamp" does not select RED. A sentence without a name uses the most recent character and is marked `subject_source: "context"`. The paragraph is compared with every combination by cosine similarity. Regular-expression hints for verbs, prop classes and positions only veto contradicting combinations and supply verb evidence. A paragraph becomes a `narration` event, with no physical action, when it lacks a plausible combination or verb evidence, or scores below `resolver.action_threshold` (0.3 lexical, 0.45 Sentence-BERT). This is the left endpoint of the paper's Fig. 8. A Sentence-BERT paraphrase without a lexical verb must reach `action_paraphrase_threshold` (0.7).
+- **Props.** Keys in `props` are instances. `class`, or the key without a numeric suffix, names the object class, so several lamps can coexist. The nearest instance to the actor's current position is chosen. When a prop has no positional anchors, `left`/`right` choose between instances. `anchor`, or a per-position entry in `anchors`, is the stand point the actor walks to. `interaction` is the `[x, y, height_m]` hand target, `size` is `[width, height, depth]` in metres, and `seat_height` is used for sitting. Without an anchor, the stand point is derived from the prop size plus 0.35 m clearance.
+- **Emotion.** Parentheticals are scored against a keyword dictionary for anger, disgust, fear, neutral, joy, sadness and surprise; the library's `emotions` field can replace it. Each keyword implies a weak, medium or strong level. The offline path counts stemmed keyword hits. With a Sentence-BERT model, each emotion also adds its top three keyword cosine similarities above 0.25. Intensifiers such as "very" or "slightly" shift the level. Text without an emotional cue maps to neutral. Emotion events carry `emotion`, `level` (1–3) and per-emotion scores.
+- **Manual expressions.** Append `[emotion: joy 2]` to any paragraph, or set `emotion_overrides` in the library, for example `{"3": {"emotion": "sadness", "level": 3}}` keyed by paragraph index. The demo's **Facial expression per paragraph** panel writes that field and recompiles.
+- **Gaze.** A speaker looks at a character named in the line, otherwise at the centroid of the other characters. Speech events carry `gaze` and `gaze_point`.
+- **Co-speech gesture.** Dialogue gestures are retrieved at playback from the local BEAT bank. **Export timeline** adds each speech event's played clip ids and retrieval route, plus a `played_gestures` list.
+- **FDX.** Character extensions such as `(CONT'D)`, `(V.O.)` and `(O.S.)` are removed, and styled text runs are joined without inserted spaces.
+
+### Local Sentence-BERT models
+
+Semantic mode never downloads at compile time. Models load with `local_files_only=True`, once per server process, and embeddings are cached across compiles. The paper names `all-mpnet-base-v2` for gesture text and `multi-qa-mpnet-base-dot-v1` for actions; this implementation reuses `all-mpnet-base-v2` for the emotion keywords, because co-speech retrieval runs in the BEAT adapter. Save both models into the ignored `models/` folder once:
+
+```sh
+python -m pip install -e ".[semantic]"
+python -c "from sentence_transformers import SentenceTransformer as S; [S('sentence-transformers/' + n).save('models/' + n) for n in ('all-mpnet-base-v2', 'multi-qa-mpnet-base-dot-v1')]"
+```
+
+In the demo, choose **Sentence-BERT** and enter `models/all-mpnet-base-v2` and `models/multi-qa-mpnet-base-dot-v1`. For the CLI, add the same folders to the library; relative paths resolve from the working directory:
+
+```json
+"resolver": {"backend": "sentence-transformer", "emotion_model": "models/all-mpnet-base-v2", "action_model": "models/multi-qa-mpnet-base-dot-v1"}
+```
 
 `timeline.json` is the canonical output. HTML files embed all JSON, CSS, SVG, and JavaScript and can be opened without a server. They are schematic planning artifacts and make no claim to reproduce the paper's Unity rendering, trained GestureCLR mapping, mocap library, commercial TTS/lip-sync, NavMesh/IK, 360 video, or hardware VR.
 
@@ -133,7 +158,7 @@ python scripts/demo.py --port 8010
 
 Open http://127.0.0.1:8010. Edit the screenplay or import FDX, compile the scene, play/scrub its actual event schedule, inspect resolved actions/gestures and capture rendered storyboard frames. Characters are bundled fictional CC0 avatars; the starter action catalog is authored, while dialogue retrieves locally prepared BEAT body-motion clips. The browser renderer replaces the institute’s Unity/assets; it does not reproduce its motion library.
 
-The default lexical resolver runs without model downloads. For the paper’s semantic retrieval component, install `pip install -e ".[semantic]"`, obtain local Sentence-BERT model directories and select semantic mode: `all-mpnet-base-v2` for gesture phrases and `multi-qa-mpnet-base-dot-v1` for actions. The scene catalog remains JSON: replace `characters`, `props` and `motions` to extend the demonstration. No dataset or model weights are included.
+The default lexical matching runs without model downloads; [Local Sentence-BERT models](#local-sentence-bert-models) describes semantic mode. The scene catalog remains JSON: replace `characters`, `props` and `actions` to extend the demonstration. No dataset or model weights are included.
 
 The journal demo exposes camera inspection, JSON schedule export and storyboard export. The ISMAR variant centers on scene playback and frame capture; the Live variant starts continuous playback after compilation. Neither earlier variant claims the journal’s full VR/360 outputs.
 
